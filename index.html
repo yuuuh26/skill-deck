@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="theme-color" content="#172b55">
+  <meta name="description" content="Skillを探してコピーする、個人用のSkillライブラリ">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" href="./icons/icon-192.png" sizes="192x192">
+  <link rel="apple-touch-icon" href="./icons/icon-192.png">
+  <link rel="stylesheet" href="./style.css">
+  <title>Skill Deck</title>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand"><span class="brand-mark" aria-hidden="true">▤</span><div><strong>Skill Deck</strong><small>自分のSkillを、すぐ使う。</small></div></div>
+      <button id="top-new" class="icon-button" aria-label="新しいSkillを作る" title="新しいSkill">＋</button>
+    </header>
+    <main>
+      <section id="home" class="screen active" aria-label="ホーム">
+        <div class="hero"><p class="eyebrow">MY SKILL LIBRARY</p><h1>使いたいSkillを<br>すぐ手元に。</h1><p>探して、コピーして、AIのチャットへ。</p></div>
+        <div class="search-panel">
+          <label class="search-field"><span aria-hidden="true">⌕</span><input id="search" type="search" placeholder="タイトル・本文・タグで検索" autocomplete="off" aria-label="Skillを検索"></label>
+          <div class="filters">
+            <label>AI<select id="filter-ai"><option value="">すべて</option></select></label>
+            <label>ツール<select id="filter-tool"><option value="">すべて</option></select></label>
+            <label>タグ<select id="filter-tag"><option value="">すべて</option></select></label>
+          </div>
+        </div>
+        <div class="section-heading"><h2>最新のSkill <span id="home-count" class="count"></span></h2><button id="home-new" class="text-button">＋ 新規作成</button></div>
+        <div id="skill-list" class="card-list"></div>
+      </section>
+      <section id="archive" class="screen" aria-label="アーカイブ">
+        <div class="page-heading"><p class="eyebrow">VERSION HISTORY</p><h1>アーカイブ</h1><p>旧版も本文を確認してコピーできます。</p></div>
+        <label class="search-field"><span aria-hidden="true">⌕</span><input id="archive-search" type="search" placeholder="旧版を検索" aria-label="アーカイブを検索"></label>
+        <div id="archive-list" class="card-list archive-list"></div>
+      </section>
+      <section id="detail" class="screen" aria-label="Skill詳細">
+        <button class="back-button" data-back>← 戻る</button>
+        <div class="detail-heading"><span id="detail-badge" class="badge"></span><h1 id="detail-title"></h1><p id="detail-meta" class="muted"></p><div id="detail-tags" class="tags"></div></div>
+        <div class="action-row"><button id="copy-skill" class="primary-button">本文をコピー</button><button id="edit-skill" class="secondary-button">編集</button></div>
+        <section class="content-card"><h2>Skill本文</h2><pre id="detail-content"></pre></section>
+        <section class="content-card"><h2>対応AI</h2><div id="detail-ai"></div></section>
+        <div id="detail-note-wrap" class="content-card" hidden><h2>補足</h2><p id="detail-note"></p></div>
+        <button id="show-history" class="secondary-button full-button">このSkillの履歴を見る →</button>
+        <div id="history-list" class="card-list" hidden></div>
+      </section>
+      <section id="editor" class="screen" aria-label="Skill編集">
+        <button class="back-button" id="editor-back">← 戻る</button>
+        <div class="page-heading"><p class="eyebrow" id="editor-kind">NEW SKILL</p><h1 id="editor-heading">Skillを作成</h1><p id="editor-source"></p></div>
+        <form id="skill-form" novalidate>
+          <label class="field"><span>タイトル <b>*</b></span><input id="edit-title" maxlength="140" required placeholder="例：アプリ仕様書作成"></label>
+          <div class="field-heading"><label for="edit-content">Skill本文 <b>*</b></label><div class="undo-controls"><button type="button" id="undo" disabled aria-label="戻る">↶ 戻る</button><button type="button" id="redo" disabled aria-label="やり直す">↷ やり直す</button></div></div>
+          <textarea id="edit-content" required spellcheck="false" placeholder="ここにSkillの文章を入力" rows="16"></textarea>
+          <p class="hint">入力が一段落したら編集履歴を記録します（最大80段階）。</p>
+          <label class="field"><span>タグ <small>読点または改行で区切る</small></span><input id="edit-tags" placeholder="料理、調査、文章"></label>
+          <label class="field"><span>補足メモ</span><textarea id="edit-note" rows="3" placeholder="この版に関するメモ"></textarea></label>
+          <section class="editor-panel"><div class="section-heading"><h2>対応AIと必要ツール</h2></div><p class="hint">使用するAIにチェックを入れて、状態やツールを設定します。</p><div id="ai-editor"></div></section>
+          <div class="save-bar"><button id="save-skill" type="submit" class="primary-button full-button">保存する</button><p>保存ごとに新しい版を作成します</p></div>
+        </form>
+      </section>
+      <section id="settings" class="screen" aria-label="設定">
+        <div class="page-heading"><p class="eyebrow">PREFERENCES & BACKUP</p><h1>設定</h1><p>データの持ち運びと利用環境</p></div>
+        <section class="content-card"><h2>データの保護</h2><p class="muted">Skill本文はこの端末のブラウザ内に保存されます。機種変更前にJSONバックアップを保存してください。</p><p id="storage-status" class="status-line">永続ストレージ：確認中</p><button id="request-persist" class="secondary-button">永続ストレージを申請</button></section>
+        <section class="content-card"><h2>バックアップと移行</h2><button id="export-json" class="setting-action"><span><strong>全データをエクスポート</strong><small>復元用の完全バックアップ（JSON）</small></span><span>↓</span></button><label class="setting-action file-action"><span><strong>データをインポート</strong><small>ファイル検証後に内容を確認</small></span><span>↑</span><input id="import-file" type="file" accept=".json,application/json" hidden></label><div id="import-preview" class="import-preview" hidden></div></section>
+        <section class="content-card"><h2>Markdown出力</h2><label class="checkbox-line"><input id="include-archives" type="checkbox"> 過去版も含める</label><button id="export-md" class="secondary-button">Markdownを出力</button><p class="hint">閲覧用です。完全復元にはJSONを使用してください。</p></section>
+        <section class="content-card"><h2>AIマスター</h2><div id="ai-master" class="master-list"></div><form id="ai-master-form" class="master-form"><input id="new-ai" maxlength="60" placeholder="AIを追加" aria-label="追加するAIの名前"><button type="submit">追加</button></form></section>
+        <section class="content-card"><h2>ツールマスター</h2><div id="tool-master" class="master-list"></div><form id="tool-master-form" class="master-form"><input id="new-tool" maxlength="60" placeholder="ツールを追加" aria-label="追加するツールの名前"><button type="submit">追加</button></form></section>
+        <section class="content-card"><h2>アプリ情報</h2><p>Skill Deck <span id="app-version"></span></p><button id="copy-url" class="setting-action"><span>公開URLをコピー<small>https://yuuuh26.github.io/skill-deck/</small></span><span>⧉</span></button><a class="setting-action" href="https://github.com/yuuuh26/skill-deck" target="_blank" rel="noopener noreferrer">GitHubリポジトリ ↗</a><p class="signature">Made by YUU</p></section>
+      </section>
+    </main>
+    <nav class="bottom-nav" aria-label="メインメニュー"><button data-nav="home" class="selected"><span>⌂</span>ホーム</button><button data-nav="archive"><span>▤</span>履歴</button><button data-nav="settings"><span>⚙</span>設定</button></nav>
+  </div>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
