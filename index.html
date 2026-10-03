@@ -21,8 +21,11 @@
     <button id="sync-indicator" class="sync-indicator" data-nav="settings">端末に保存</button>
     <main>
       <section id="home" class="screen active" aria-label="ホーム">
-        <div class="hero"><p class="eyebrow">MY SKILL LIBRARY</p><h1>使いたいSkillを<br>すぐ手元に。</h1><p>探して、コピーして、AIのチャットへ。</p></div>
-        <div class="search-panel">
+        <div class="section-heading"><h2>最新のSkill <span id="home-count" class="count"></span></h2><button id="home-new" class="text-button">＋ 新規作成</button></div>
+        <p class="hint">ピン留めしたSkillは先頭に固定。↑ ↓ で順番を変更できます。</p>
+        <div id="skill-list" class="card-list"></div>
+        <div class="search-panel" aria-label="検索と絞り込み">
+          <h2>検索と絞り込み</h2>
           <label class="search-field"><span aria-hidden="true">⌕</span><input id="search" type="search" placeholder="タイトル・本文・タグで検索" autocomplete="off" aria-label="Skillを検索"></label>
           <div class="filters">
             <label>AI<select id="filter-ai"><option value="">すべて</option></select></label>
@@ -30,8 +33,7 @@
             <label>タグ<select id="filter-tag"><option value="">すべて</option></select></label>
           </div>
         </div>
-        <div class="section-heading"><h2>最新のSkill <span id="home-count" class="count"></span></h2><button id="home-new" class="text-button">＋ 新規作成</button></div>
-        <div id="skill-list" class="card-list"></div>
+
       </section>
       <section id="archive" class="screen" aria-label="アーカイブ">
         <div class="page-heading"><p class="eyebrow">VERSION HISTORY</p><h1>アーカイブ</h1><p>旧版も本文を確認してコピーできます。</p></div>
@@ -80,7 +82,7 @@
         <section class="content-card"><h2>バックアップと移行</h2><button id="export-json" class="setting-action"><span><strong>全データをエクスポート</strong><small>復元用の完全バックアップ（JSON）</small></span><span>↓</span></button><label class="setting-action file-action"><span><strong>データをインポート</strong><small>ファイル検証後に内容を確認</small></span><span>↑</span><input id="import-file" type="file" accept=".json,application/json" hidden></label><div id="import-preview" class="import-preview" hidden></div></section>
         <section class="content-card"><h2>Markdown出力</h2><label class="checkbox-line"><input id="include-archives" type="checkbox"> 過去版も含める</label><button id="export-md" class="secondary-button">Markdownを出力</button><p class="hint">閲覧用です。完全復元にはJSONを使用してください。</p></section>
         <section class="content-card"><h2>AIマスター</h2><div id="ai-master" class="master-list"></div><form id="ai-master-form" class="master-form"><input id="new-ai" maxlength="60" placeholder="AIを追加" aria-label="追加するAIの名前"><button type="submit">追加</button></form></section>
-        <section class="content-card"><h2>ツールマスター</h2><div id="tool-master" class="master-list"></div><form id="tool-master-form" class="master-form"><input id="new-tool" maxlength="60" placeholder="ツールを追加" aria-label="追加するツールの名前"><button type="submit">追加</button></form></section>
+        <section class="content-card"><h2>対応ツールの編集</h2><p class="hint">選択肢を追加・名前変更・削除できます。登録済みSkillと過去版のツール情報は残ります。</p><div id="tool-master" class="master-list"></div><form id="tool-master-form" class="master-form"><input id="new-tool" maxlength="60" placeholder="ツールを追加" aria-label="追加するツールの名前"><button type="submit">追加</button></form></section>
         <section class="content-card"><h2>アプリ情報</h2><p>Skill Deck <span id="app-version"></span></p><button id="copy-url" class="setting-action"><span>公開URLをコピー<small>https://yuuuh26.github.io/skill-deck/</small></span><span>⧉</span></button><a class="setting-action" href="https://github.com/yuuuh26/skill-deck" target="_blank" rel="noopener noreferrer">GitHubリポジトリ ↗</a><p class="signature">Made by YUU</p></section>
       </section>
     </main>

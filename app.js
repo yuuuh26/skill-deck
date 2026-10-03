@@ -1,5 +1,6 @@
 import {setupCloud,CLOUD_URL} from './cloud.js';
-import { APP_VERSION, DEFAULT_AI, DEFAULT_TOOLS, STATUSES, readAll, saveVersion, saveMaster, importData } from './db.js';
+import { APP_VERSION, DEFAULT_AI, DEFAULT_TOOLS, STATUSES, readAll, saveVersion, saveMaster, updateSkillLayout, editToolMaster, importData } from './db.js';
+import { orderedFamilies, moveLayout, pinLayout } from './layout.js';
 import { makeBackup, parseBackup, getMergeConflict, downloadText, filename, asMarkdown } from './backup.js';
 
 const $ = selector => document.querySelector(selector);
@@ -83,15 +84,51 @@ function renderFilters() {
   fillSelect('#filter-tool', data.toolMaster, $('#filter-tool').value);
   fillSelect('#filter-tag', [...new Set(data.versions.flatMap(v => v.tags))].sort((a,b) => a.localeCompare(b, 'ja')), $('#filter-tag').value);
 }
-function renderHome() {
+function matchingFamilies() {
   const term = $('#search').value.trim().toLocaleLowerCase();
   const ai = $('#filter-ai').value, tool = $('#filter-tool').value, tag = $('#filter-tag').value;
-  const matched = data.families.map(f => version(f.currentVersionId)).filter(Boolean).filter(v => {
-    const familyVersions = versionsOf(v.familyId);
-    return familyVersions.some(old => containsTerm(old, term)) && (!ai || v.aiSupport.some(a => a.name === ai && a.status !== '非対応')) && (!tool || v.aiSupport.some(a => a.status !== '非対応' && a.tools.includes(tool))) && (!tag || v.tags.includes(tag));
-  }).sort((a, b) => b.savedAt.localeCompare(a.savedAt));
+  return orderedFamilies(data).filter(f => {
+    const v = version(f.currentVersionId); if (!v) return false;
+    return versionsOf(v.familyId).some(old => containsTerm(old, term)) && (!ai || v.aiSupport.some(a => a.name === ai && a.status !== '非対応')) && (!tool || v.aiSupport.some(a => a.status !== '非対応' && a.tools.includes(tool))) && (!tag || v.tags.includes(tag));
+  });
+}
+let arranging = false;
+async function arrangeSkill(id, direction = null) {
+  if (arranging) return;
+  arranging = true;
+  try {
+    const visible = matchingFamilies().map(f => f.familyId);
+    await updateSkillLayout(latest => direction === null ? pinLayout(latest, id) : moveLayout(latest, id, direction, visible));
+    await refresh();
+    toast(direction === null ? (data.settings.skillLayout?.pinned.includes(id) ? 'ピン留めしました' : 'ピン留めを解除しました') : '順番を変更しました');
+  } catch (error) { toast(`保存に失敗しました：${error.message}`); }
+  finally { arranging = false; }
+}
+function renderHome() {
+  const matched = matchingFamilies();
+  const pinned = new Set(data.settings.skillLayout?.pinned || []);
   $('#home-count').textContent = matched.length;
-  $('#skill-list').replaceChildren(...(matched.length ? matched.map(makeCard) : [create('div', 'empty', data.families.length ? '条件に合うSkillがありません。検索や絞り込みを変えてみてください。' : 'まだSkillがありません。「新規作成」から最初のSkillを登録しましょう。')]));
+  const cards = matched.map(f => {
+    const v = version(f.currentVersionId);
+    const holder = create('div', `skill-item${pinned.has(f.familyId) ? ' pinned' : ''}`);
+    holder.dataset.familyId = f.familyId;
+    const controls = create('div', 'skill-controls');
+    const pin = create('button', 'pin-button', pinned.has(f.familyId) ? '📌 固定中' : 'ピン留め');
+    pin.type = 'button'; pin.setAttribute('aria-pressed', String(pinned.has(f.familyId)));
+    pin.setAttribute('aria-label', `${v.title}のピン留め${pinned.has(f.familyId) ? 'を解除' : ''}`);
+    pin.addEventListener('click', () => arrangeSkill(f.familyId));
+    controls.append(pin);
+    const group = matched.filter(item => pinned.has(item.familyId) === pinned.has(f.familyId));
+    const position = group.findIndex(item => item.familyId === f.familyId);
+    for (const [direction, label] of [[-1, '↑'], [1, '↓']]) {
+      const move = create('button', 'move-button', label); move.type = 'button';
+      move.setAttribute('aria-label', `${v.title}を${direction < 0 ? '上' : '下'}へ移動`);
+      move.disabled = direction < 0 ? position === 0 : position === group.length - 1;
+      move.addEventListener('click', () => arrangeSkill(f.familyId, direction)); controls.append(move);
+    }
+    holder.append(makeCard(v), controls); return holder;
+  });
+  $('#skill-list').replaceChildren(...(cards.length ? cards : [create('div', 'empty', data.families.length ? '条件に合うSkillがありません。検索や絞り込みを変えてみてください。' : 'まだSkillがありません。「新規作成」から最初のSkillを登録しましょう。')]));
 }
 function renderArchive() {
   const term = $('#archive-search').value.trim().toLocaleLowerCase();
@@ -233,7 +270,24 @@ async function copyText(text) {
 }
 function renderMasters() {
   tagNodes($('#ai-master'), data.aiMaster);
-  tagNodes($('#tool-master'), data.toolMaster);
+  const tools = $('#tool-master'); tools.replaceChildren();
+  for (const name of data.toolMaster) {
+    const row = create('form', 'tool-master-row');
+    const input = create('input'); input.value = name; input.maxLength = 60;
+    input.setAttribute('aria-label', `${name}の名前`); input.required = true;
+    const save = create('button', '', '保存'); save.type = 'submit';
+    const remove = create('button', 'tool-remove', '削除'); remove.type = 'button';
+    remove.setAttribute('aria-label', `${name}を選択肢から削除`);
+    async function change(newName) {
+      save.disabled = remove.disabled = true;
+      try { await editToolMaster(name, newName); await refresh(); toast(newName === null ? '選択肢から削除しました' : '名前を変更しました'); }
+      catch (error) { toast(`保存に失敗しました：${error.message}`); }
+      finally { save.disabled = remove.disabled = false; }
+    }
+    row.addEventListener('submit', event => { event.preventDefault(); const value = input.value.trim(); if (value && value !== name) change(value); });
+    remove.addEventListener('click', () => change(null));
+    row.append(input, save, remove); tools.append(row);
+  }
 }
 async function addMaster(event, key, inputId) {
   event.preventDefault(); const input = $(inputId), name = input.value.trim();

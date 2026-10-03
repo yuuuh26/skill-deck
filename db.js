@@ -1,4 +1,4 @@
-export const APP_VERSION = '1.1.0';
+export const APP_VERSION = '1.2.0';
 export const SCHEMA_VERSION = 1;
 export const DEFAULT_AI = ['ChatGPT', 'Gemini', 'Claude', 'Microsoft Copilot', 'その他'];
 export const DEFAULT_TOOLS = ['外部ツール不要', 'Web検索', 'ファイル読込', 'Notion', 'Google Drive', 'GitHub', '画像生成', 'Computer Use', 'その他'];
@@ -92,6 +92,37 @@ export async function saveMaster(key, values) {
   await markChanged(tx);
   await done;
   changed();
+}
+
+// Layout and master edits share the durable queue with content saves.
+export async function updateSkillLayout(transform) {
+  const db = await openDb();
+  const tx = db.transaction(['families', 'versions', 'meta'], 'readwrite');
+  const done = transactionDone(tx);
+  try {
+    const [families, versions, record] = await Promise.all([
+      request(tx.objectStore('families').getAll()), request(tx.objectStore('versions').getAll()),
+      request(tx.objectStore('meta').get('settings'))
+    ]);
+    const settings = record?.value || {};
+    const skillLayout = transform({families, versions, settings});
+    tx.objectStore('meta').put({key: 'settings', value: {...settings, skillLayout}});
+    await markChanged(tx);
+  } catch (error) { tx.abort(); await done.catch(() => {}); throw error; }
+  await done; changed();
+}
+export async function editToolMaster(oldName, newName) {
+  const db = await openDb(); const tx = db.transaction('meta', 'readwrite');
+  const done = transactionDone(tx); const store = tx.objectStore('meta');
+  try {
+    const values = (await request(store.get('toolMaster')))?.value || [...DEFAULT_TOOLS];
+    if (!values.includes(oldName)) throw new Error('選択肢が変更されました。再読み込みしてください');
+    if (newName !== null && (typeof newName !== 'string' || !newName.trim() || newName.length > 60)) throw new Error('ツール名を1〜60文字で入力してください');
+    if (newName !== null && values.some(v => v !== oldName && v.toLocaleLowerCase() === newName.trim().toLocaleLowerCase())) throw new Error('すでに登録されています');
+    store.put({key: 'toolMaster', value: newName === null ? values.filter(v => v !== oldName) : values.map(v => v === oldName ? newName.trim() : v)});
+    await markChanged(tx);
+  } catch (error) { tx.abort(); await done.catch(() => {}); throw error; }
+  await done; changed();
 }
 
 export async function importData(data, mode) {

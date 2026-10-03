@@ -1,6 +1,6 @@
 import {build} from 'esbuild';
 import {readFile,mkdir} from 'node:fs/promises';
-const files={'index.html':'text/html;charset=utf-8','style.css':'text/css;charset=utf-8','app.js':'text/javascript;charset=utf-8','db.js':'text/javascript;charset=utf-8','backup.js':'text/javascript;charset=utf-8','cloud.js':'text/javascript;charset=utf-8','cloudflare/snapshot.js':'text/javascript;charset=utf-8','sw.js':'text/javascript;charset=utf-8','manifest.webmanifest':'application/manifest+json','icons/icon-192.png':'image/png','icons/icon-512.png':'image/png','icons/maskable-512.png':'image/png'};
+const files={'index.html':'text/html;charset=utf-8','style.css':'text/css;charset=utf-8','app.js':'text/javascript;charset=utf-8','layout.js':'text/javascript;charset=utf-8','db.js':'text/javascript;charset=utf-8','backup.js':'text/javascript;charset=utf-8','cloud.js':'text/javascript;charset=utf-8','cloudflare/snapshot.js':'text/javascript;charset=utf-8','sw.js':'text/javascript;charset=utf-8','manifest.webmanifest':'application/manifest+json','icons/icon-192.png':'image/png','icons/icon-512.png':'image/png','icons/maskable-512.png':'image/png'};
 const assets={};
 for(const [file,type] of Object.entries(files)){
  let bytes=await readFile(file);

@@ -35,8 +35,35 @@ try {
  await pb.locator('#cloud-history-load').click();await pb.waitForFunction(()=>document.querySelectorAll('#cloud-history button').length===3);
  const head=env.DB.sql.prepare('SELECT revision FROM cloud_state').get().revision;assert.equal(head,4);
  assert.equal(env.DB.sql.prepare('SELECT count(*) n FROM backups WHERE revision IS NOT NULL').get().n,3);
+ // Presentation changes must follow the same cloud and offline guarantees.
+ await home(pa); await home(pb);
+ assert.equal(await pa.locator('.hero').count(),0);
+ assert.equal(await pa.evaluate(()=>document.querySelector('#skill-list').compareDocumentPosition(document.querySelector('.search-panel')) & Node.DOCUMENT_POSITION_FOLLOWING),4);
+ const initial=await pa.locator('#skill-list h3').allTextContents();
+ await pa.locator('#skill-list .pin-button').last().click(); await synced(pa);
+ await pb.waitForFunction(()=>document.querySelectorAll('.skill-item.pinned').length===1);
+ assert.equal(await pb.locator('#skill-list h3').first().textContent(),initial[1]);
+ await pa.locator('#skill-list .pin-button').last().click(); await synced(pa);
+ await pb.waitForFunction(()=>document.querySelectorAll('.skill-item.pinned').length===2);
+ await pa.locator('#skill-list .move-button').nth(1).click(); await synced(pa);
+ await pb.waitForFunction(title=>document.querySelector('#skill-list h3').textContent===title,initial[0]);
+ await a.setOffline(true);await pa.locator('#skill-list .pin-button').first().click();await pa.waitForFunction(()=>document.querySelectorAll('.skill-item.pinned').length===1);await pa.reload();
+ await pa.waitForFunction(()=>document.querySelectorAll('.skill-item.pinned').length===1);await a.setOffline(false);await synced(pa);
+ await pb.waitForFunction(()=>document.querySelectorAll('.skill-item.pinned').length===1);
+ await pa.locator('[data-nav="settings"]').last().click();
+ const notion=pa.locator('.tool-master-row').filter({has:pa.locator('input[aria-label="Notionの名前"]')});
+ await notion.locator('input').fill('メモ連携');await notion.locator('button[type="submit"]').click();await synced(pa);
+ await pb.waitForFunction(()=>[...document.querySelectorAll('#filter-tool option')].some(o=>o.value==='メモ連携'));
+ await pa.locator('.tool-master-row').filter({has:pa.locator('input[aria-label="Computer Useの名前"]')}).locator('.tool-remove').click();await synced(pa);
+ await pb.waitForFunction(()=>![...document.querySelectorAll('#filter-tool option')].some(o=>o.value==='Computer Use'));
+ await home(pb);await pb.locator('.skill-card').first().click();await pb.locator('#edit-skill').click();
+ await pb.locator('#edit-content').fill('固定後に本文編集');await pb.locator('#save-skill').click();await synced(pb);
+ await pa.waitForFunction(()=>[...document.querySelectorAll('#skill-list .skill-item.pinned h3')].length===1);
+ const backup=await pa.evaluate(async()=>{const {readAll}=await import('./db.js');const {makeBackup,parseBackup}=await import('./backup.js');const data=await readAll();return parseBackup(JSON.stringify(makeBackup(data))).data;});
+ assert.equal(backup.settings.skillLayout.pinned.length,1);assert.ok(backup.toolMaster.includes('メモ連携'));assert.ok(!backup.toolMaster.includes('Computer Use'));
+ assert.equal(await pa.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
  assert.equal(errors.length,0,errors.join('\n'));
  await pa.locator('[data-nav="settings"]').last().click();await pa.screenshot({path:process.env.CLOUD_MOBILE_SCREENSHOT||'/tmp/skill-deck-cloud-mobile.png',fullPage:true});
  await home(pb);await pb.screenshot({path:process.env.CLOUD_PC_SCREENSHOT||'/tmp/skill-deck-cloud-pc.png',fullPage:true});
- console.log('PASS: mobile/PC round trip, offline reload/retry, concurrent conflict preservation, 3-generation history, no browser errors');
+ console.log('PASS: mobile/PC round trip, offline reload/retry, concurrent conflict preservation, 3-generation history, pinned/manual order, offline preferences, editable tools and backup round trip, no browser errors');
 }finally{await browser.close();server.close();}

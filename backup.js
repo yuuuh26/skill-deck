@@ -45,6 +45,13 @@ export function validateBackup(raw) {
     }
     versionMap.set(v.versionId, v);
   }
+  if (settings.skillLayout !== undefined) {
+    const layout = settings.skillLayout;
+    if (!isObject(layout) || !strings(layout.order) || !strings(layout.pinned) ||
+        [layout.order, layout.pinned].some(ids => new Set(ids).size !== ids.length || ids.some(id => !familyMap.has(id)))) {
+      throw new Error('ピン留めまたは並び順の設定が不正です');
+    }
+  }
   const numbers = new Set();
   for (const v of versions) {
     const key = `${v.familyId}\u0000${v.versionNumber}`;

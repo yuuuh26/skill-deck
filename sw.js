@@ -1,6 +1,6 @@
-const CACHE = 'skill-deck-v1.1.0';
+const CACHE = 'skill-deck-v1.2.0';
 const ASSETS = [
-  './', './index.html', './style.css', './app.js', './db.js', './backup.js', './cloud.js', './cloudflare/snapshot.js',
+  './', './index.html', './style.css', './app.js', './db.js', './backup.js', './layout.js', './cloud.js', './cloudflare/snapshot.js',
   './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png', './icons/maskable-512.png'
 ];
 self.addEventListener('install', event => {
