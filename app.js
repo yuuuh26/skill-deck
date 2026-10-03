@@ -1,3 +1,4 @@
+import {setupCloud,CLOUD_URL} from './cloud.js';
 import { APP_VERSION, DEFAULT_AI, DEFAULT_TOOLS, STATUSES, readAll, saveVersion, saveMaster, importData } from './db.js';
 import { makeBackup, parseBackup, getMergeConflict, downloadText, filename, asMarkdown } from './backup.js';
 
@@ -32,7 +33,15 @@ function version(id) { return data.versions.find(item => item.versionId === id);
 function family(id) { return data.families.find(item => item.familyId === id); }
 function versionsOf(id) { return data.versions.filter(v => v.familyId === id).sort((a, b) => b.versionNumber - a.versionNumber); }
 function current(v) { return family(v.familyId)?.currentVersionId === v.versionId; }
-function refresh() { return readAll().then(result => { data = result; renderAll(); }); }
+function refresh() {
+  const shown=version(detailId);
+  const followLatest=shown && current(shown);
+  return readAll().then(result => {
+    data=result;
+    if(followLatest) detailId=family(shown.familyId)?.currentVersionId || detailId;
+    renderAll();
+  });
+}
 
 function leaveEditor() {
   if (screen === 'editor' && editorDirty && !window.confirm('保存前の編集内容を破棄して移動しますか？')) return false;
@@ -300,10 +309,11 @@ $('#request-persist').addEventListener('click', async () => { try { await naviga
 $('#export-json').addEventListener('click', exportJson);
 $('#export-md').addEventListener('click', () => { try { downloadText(filename('md'), asMarkdown(data, $('#include-archives').checked), 'text/markdown;charset=utf-8'); toast('Markdownを作成しました'); } catch { toast('出力に失敗しました'); } });
 $('#import-file').addEventListener('change', importFile);
-$('#copy-url').addEventListener('click', () => copyText('https://yuuuh26.github.io/skill-deck/'));
+$('#copy-url').addEventListener('click', () => copyText(location.origin===CLOUD_URL?CLOUD_URL+'/':'https://yuuuh26.github.io/skill-deck/'));
 $('#app-version').textContent = `v${APP_VERSION}`;
 window.addEventListener('beforeunload', event => { if (editorDirty && screen === 'editor') { event.preventDefault(); event.returnValue = ''; } });
 
 try { await refresh(); await storageStatus(); }
 catch (error) { toast(`保存領域を開けません：${error.message}`); }
+setupCloud({refresh,isEditing:()=>screen==='editor',toast});
 if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('./sw.js').catch(() => {});

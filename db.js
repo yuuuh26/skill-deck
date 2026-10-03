@@ -1,4 +1,4 @@
-export const APP_VERSION = '1.0.0';
+export const APP_VERSION = '1.1.0';
 export const SCHEMA_VERSION = 1;
 export const DEFAULT_AI = ['ChatGPT', 'Gemini', 'Claude', 'Microsoft Copilot', 'その他'];
 export const DEFAULT_TOOLS = ['外部ツール不要', 'Web検索', 'ファイル読込', 'Notion', 'Google Drive', 'GitHub', '画像生成', 'Computer Use', 'その他'];
@@ -60,7 +60,7 @@ export async function readAll() {
 
 export async function saveVersion({ family, version }) {
   const db = await openDb();
-  const tx = db.transaction(['families', 'versions'], 'readwrite');
+  const tx = db.transaction(['families', 'versions', 'meta'], 'readwrite');
   const done = transactionDone(tx);
   const families = tx.objectStore('families');
   const versions = tx.objectStore('versions');
@@ -78,7 +78,9 @@ export async function saveVersion({ family, version }) {
   const { expectedCurrentVersionId, ...record } = family;
   versions.add(version);
   families.put(record);
+  await markChanged(tx);
   await done;
+  changed();
 }
 
 export async function saveMaster(key, values) {
@@ -87,7 +89,9 @@ export async function saveMaster(key, values) {
   const tx = db.transaction('meta', 'readwrite');
   const done = transactionDone(tx);
   tx.objectStore('meta').put({ key, value: values });
+  await markChanged(tx);
   await done;
+  changed();
 }
 
 export async function importData(data, mode) {
@@ -128,8 +132,56 @@ export async function importData(data, mode) {
       ms.put({ key: 'toolMaster', value: data.toolMaster });
       ms.put({ key: 'settings', value: data.settings });
     }
+    await markChanged(tx);
   } catch (error) {
     tx.abort(); await done.catch(() => {}); throw error;
   }
   await done;
+  changed();
+}
+
+export const SYNC_DEFAULT = {localRevision:0, ackRevision:0, cloudRevision:0, initialized:false, inFlight:null, lastSuccess:null};
+const changed = () => { if (typeof window !== 'undefined') window.dispatchEvent(new Event('skill-deck-changed')); };
+async function markChanged(tx) {
+  const store=tx.objectStore('meta');
+  const sync=(await request(store.get('cloudSync')))?.value || {...SYNC_DEFAULT};
+  store.put({key:'cloudSync', value:{...sync,localRevision:sync.localRevision+1}});
+}
+export async function syncState() {
+  const db=await openDb(); const tx=db.transaction('meta','readonly'); const done=transactionDone(tx);
+  const r=await request(tx.objectStore('meta').get('cloudSync')); await done;
+  return r?.value || {...SYNC_DEFAULT};
+}
+export async function updateSync(fn) {
+  const db=await openDb(); const tx=db.transaction('meta','readwrite'); const done=transactionDone(tx);
+  const store=tx.objectStore('meta'); const value=(await request(store.get('cloudSync')))?.value || {...SYNC_DEFAULT};
+  store.put({key:'cloudSync',value:fn(value)}); await done;
+}
+export async function captureSync(makeBackup) {
+  const db=await openDb(); const tx=db.transaction(['families','versions','meta'],'readwrite'); const done=transactionDone(tx);
+  const [families,versions,meta]=await Promise.all([request(tx.objectStore('families').getAll()),request(tx.objectStore('versions').getAll()),request(tx.objectStore('meta').getAll())]);
+  const byKey=Object.fromEntries(meta.map(x=>[x.key,x.value])); const state=byKey.cloudSync || {...SYNC_DEFAULT};
+  if(!state.inFlight && state.localRevision>state.ackRevision) {
+    state.inFlight={operationId:crypto.randomUUID(),baseRevision:state.cloudRevision,localRevision:state.localRevision,backup:makeBackup({families,versions,aiMaster:byKey.aiMaster||[...DEFAULT_AI],toolMaster:byKey.toolMaster||[...DEFAULT_TOOLS],settings:byKey.settings||{}})};
+    tx.objectStore('meta').put({key:'cloudSync',value:state});
+  }
+  await done; return state.inFlight;
+}
+// Remote replacement and its sync revision commit together. Keep a complete
+// local safety copy; concurrent local changes abort rather than being erased.
+export async function applyRemote(incoming, cloudRevision, expectedRevision) {
+  const db=await openDb(); const tx=db.transaction(['families','versions','meta'],'readwrite'); const done=transactionDone(tx);
+  const ms=tx.objectStore('meta'), fs=tx.objectStore('families'), vs=tx.objectStore('versions');
+  const [families,versions,meta]=await Promise.all([request(fs.getAll()),request(vs.getAll()),request(ms.getAll())]);
+  const byKey=Object.fromEntries(meta.map(x=>[x.key,x.value])); const state=byKey.cloudSync || {...SYNC_DEFAULT};
+  if(state.localRevision!==expectedRevision) {tx.abort(); await done.catch(()=>{}); throw Error('確認中に端末のデータが変更されました。再確認してください');}
+  ms.put({key:'beforeCloudRestore',value:{families,versions,aiMaster:byKey.aiMaster||[...DEFAULT_AI],toolMaster:byKey.toolMaster||[...DEFAULT_TOOLS],settings:byKey.settings||{}}});
+  fs.clear(); vs.clear(); incoming.families.forEach(x=>fs.put(x)); incoming.versions.forEach(x=>vs.put(x));
+  for(const key of ['aiMaster','toolMaster','settings']) ms.put({key,value:incoming[key]});
+  ms.put({key:'cloudSync',value:{...state,localRevision:state.localRevision+1,ackRevision:state.localRevision+1,cloudRevision,initialized:true,inFlight:null,lastSuccess:new Date().toISOString()}});
+  await done;
+}
+export async function safetyCopy() {
+  const db=await openDb(); const tx=db.transaction('meta','readonly'); const done=transactionDone(tx);
+  const r=await request(tx.objectStore('meta').get('beforeCloudRestore')); await done; return r?.value;
 }

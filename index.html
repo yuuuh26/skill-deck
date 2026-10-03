@@ -18,6 +18,7 @@
       <div class="brand"><span class="brand-mark" aria-hidden="true">▤</span><div><strong>Skill Deck</strong><small>自分のSkillを、すぐ使う。</small></div></div>
       <button id="top-new" class="icon-button" aria-label="新しいSkillを作る" title="新しいSkill">＋</button>
     </header>
+    <button id="sync-indicator" class="sync-indicator" data-nav="settings">端末に保存</button>
     <main>
       <section id="home" class="screen active" aria-label="ホーム">
         <div class="hero"><p class="eyebrow">MY SKILL LIBRARY</p><h1>使いたいSkillを<br>すぐ手元に。</h1><p>探して、コピーして、AIのチャットへ。</p></div>
@@ -63,6 +64,18 @@
       </section>
       <section id="settings" class="screen" aria-label="設定">
         <div class="page-heading"><p class="eyebrow">PREFERENCES & BACKUP</p><h1>設定</h1><p>データの持ち運びと利用環境</p></div>
+        <section class="content-card"><h2>クラウドと端末共有</h2>
+<p id="cloud-status" class="status-line" role="status">接続を確認中</p>
+<div id="cloud-migration" hidden><p class="muted">スマホ・パソコンで共有するにはクラウド版を使います。今のデータは①全データをエクスポート → ②クラウド版でインポート → ③復旧キーで接続、の順に移してください。元の端末データは残ります。</p><a id="cloud-open" class="primary-button" href="https://skill-deck-cloud.dengana-10011212.workers.dev/" target="_blank" rel="noopener">クラウド版を開く ↗</a></div>
+<div id="cloud-controls">
+<p class="hint">保存後、約1秒で自動送信。開いている別端末へ通常数秒で反映します。バックアップは最新を含め3世代。Skillの旧版はすべて残ります。</p>
+<p id="cloud-last" class="muted"></p><p id="cloud-pending" class="muted"></p><p id="cloud-device" class="muted"></p>
+<form id="cloud-connect-form"><label class="field">端末名<input id="cloud-name" maxlength="80" placeholder="例：Pixel / 自宅PC" autocomplete="off"></label><label class="field">復旧キー<input id="cloud-key" type="password" autocomplete="off" spellcheck="false" required></label><button class="primary-button" type="submit">この端末を接続する</button></form>
+<div id="cloud-conflict" class="import-preview" hidden><strong>端末とクラウドに異なる内容があります</strong><p>選択前に件数を確認します。端末のデータはJSONに退避します。</p><div class="choice-buttons"><button id="cloud-use-remote">クラウドの内容を使う</button><button id="cloud-use-local">この端末の内容を保存する</button></div></div>
+<button id="cloud-history-load" class="setting-action">3世代の履歴から復元</button><div id="cloud-history"></div><button id="cloud-safety-export" class="setting-action">復元前の退避データを書き出す</button>
+<details><summary>接続・端末管理</summary><p class="hint">一覧・名前の変更・接続解除には、その都度復旧キーが必要です。</p><label class="field">本人確認用の復旧キー<input id="cloud-admin-key" type="password" autocomplete="off" spellcheck="false"></label><button id="cloud-devices-load" class="secondary-button">接続端末の一覧</button><div id="cloud-devices"></div><button id="cloud-revoke-all" class="setting-action">全端末の接続を解除</button><button id="cloud-rotate" class="setting-action">復旧キーを変更して全端末を解除</button><code id="cloud-new-key" hidden></code><button id="cloud-logout" class="setting-action" hidden>この端末をログアウト</button></details>
+<button id="cloud-now" class="setting-action">今すぐクラウド保存・同期</button>
+</div></section>
         <section class="content-card"><h2>データの保護</h2><p class="muted">Skill本文はこの端末のブラウザ内に保存されます。機種変更前にJSONバックアップを保存してください。</p><p id="storage-status" class="status-line">永続ストレージ：確認中</p><button id="request-persist" class="secondary-button">永続ストレージを申請</button></section>
         <section class="content-card"><h2>バックアップと移行</h2><button id="export-json" class="setting-action"><span><strong>全データをエクスポート</strong><small>復元用の完全バックアップ（JSON）</small></span><span>↓</span></button><label class="setting-action file-action"><span><strong>データをインポート</strong><small>ファイル検証後に内容を確認</small></span><span>↑</span><input id="import-file" type="file" accept=".json,application/json" hidden></label><div id="import-preview" class="import-preview" hidden></div></section>
         <section class="content-card"><h2>Markdown出力</h2><label class="checkbox-line"><input id="include-archives" type="checkbox"> 過去版も含める</label><button id="export-md" class="secondary-button">Markdownを出力</button><p class="hint">閲覧用です。完全復元にはJSONを使用してください。</p></section>
