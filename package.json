@@ -1,0 +1,17 @@
+{
+  "name": "skill-deck",
+  "version": "1.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "build": "node cloudflare/site-build.mjs"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.9",
+    "fake-indexeddb": "^6.2.5"
+  },
+  "engines": {
+    "node": ">=22.13"
+  }
+}

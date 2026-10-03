@@ -1,0 +1,22 @@
+import 'fake-indexeddb/auto';
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {saveVersion,saveMaster,syncState,captureSync,updateSync,readAll,applyRemote,safetyCopy} from '../db.js';
+import {makeBackup} from '../backup.js';
+test('offline queue survives reload and in-flight edits remain pending; replacement checks revision and keeps safety copy',async()=>{
+ const now=new Date().toISOString();
+ await saveVersion({family:{familyId:'f',currentVersionId:'v',createdAt:now,updatedAt:now,expectedCurrentVersionId:null},version:{versionId:'v',familyId:'f',versionNumber:1,title:'one',content:'one',aiSupport:[],tags:[],note:'',createdAt:now,savedAt:now,basedOnVersionId:null}});
+ let s=await syncState();assert.equal(s.localRevision,1);assert.equal(s.ackRevision,0);
+ const job=await captureSync(makeBackup);assert.equal(job.localRevision,1);
+ await saveMaster('aiMaster',['ChatGPT','New AI']);
+ assert.deepEqual(await captureSync(makeBackup),job);
+ await updateSync(x=>({...x,inFlight:null,ackRevision:job.localRevision,cloudRevision:1,initialized:true}));
+ s=await syncState();assert.equal(s.localRevision,2);assert.equal(s.ackRevision,1);
+ const copy=await readAll();
+ await assert.rejects(()=>applyRemote(copy,2,1),/変更/);
+ assert.deepEqual(await readAll(),copy);
+ const remote=structuredClone(copy);remote.versions[0].content='remote';
+ await applyRemote(remote,2,2);assert.deepEqual(await safetyCopy(),copy);assert.deepEqual(await readAll(),remote);
+ s=await syncState();assert.equal(s.localRevision,s.ackRevision);assert.equal(s.cloudRevision,2);
+ assert.equal((await makeBackup(await readAll())).data.cloudSync,undefined);
+});
