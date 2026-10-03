@@ -50,3 +50,8 @@ APIは認証必須・Origin検証・認証試行制限・入力検証を実施�
 クラウドの最大スナップショットは20 MiB。D1の行サイズ制限に合わせてJSONを600,000 UTF-16単位以下のチャンクへ分け、サロゲートペアを保持。公開フロントエンドはWorkerに埋め込み、配備後もGitHubがアクセス不能ならキャッシュからオフライン利用できます。
 
 `tests/browser-check.mjs`は別々のスマホ/PCブラウザコンテキストで同期・オフライン再起動・競合・3世代を検証するローカル補助チェック。PlaywrightとChromiumがある環境で、`CODEX_PRIMARY_RUNTIME_NODE_MODULES`を設定して実行してください。
+
+
+## Shared Cloudflare D1
+
+The production Worker uses `personal-apps-shared` and the dedicated SQL prefix `skill_deck`. Recipe Deck keeps its own database. `wrangler.jsonc` records the production binding; build before deploying. Keep the existing `BACKUP_TOKEN_SHA256` secret. Every app has separate tables, session cookies, key rotation, foreign keys, retention guards and history. The optional `DB_MIGRATION_MODE=1` variable pauses API requests with 503 while moving data; remove it before normal operation. Without `DB_TABLE_PREFIX`, legacy dedicated database deployments continue to work. Existing local IndexedDB and frontend URLs are unchanged.

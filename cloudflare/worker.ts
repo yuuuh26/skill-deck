@@ -1,7 +1,8 @@
+import {appDatabase} from './shared-db';
 import {APP_ID,digest,validateInput} from './snapshot.js';
 import {validateBackup} from '../backup.js';
 import {AuthError,getSession,sameOrigin,sessionCookie,sessionRoute} from './sessions';
-export type Env={DB:any;BACKUP_TOKEN_SHA256:string};
+export type Env={DB:any;DB_TABLE_PREFIX?:string;DB_MIGRATION_MODE?:string;BACKUP_TOKEN_SHA256:string};
 class ApiError extends Error {constructor(public status:number,message:string){super(message)}}
 const idPattern=/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 async function bodyJson(r:Request) {
@@ -53,6 +54,9 @@ async function writeBackup(env:Env,input:any) {
  return committed;
 }
 export default {async fetch(request:Request,env:Env) {
+
+ if(env.DB_MIGRATION_MODE==='1')return new Response(JSON.stringify({error:'クラウドの保存先を移行中です。少し待って再送してください'}),{status:503,headers:{'Content-Type':'application/json;charset=utf-8','Cache-Control':'no-store','Retry-After':'3'}});
+ if(env.DB_TABLE_PREFIX)env={...env,DB:appDatabase(env.DB,env.DB_TABLE_PREFIX,'skill_deck')};
  const reply=(body:any,status=200,cookie?:string)=>new Response(JSON.stringify(body),{status,headers:{'Content-Type':'application/json;charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff',...(cookie?{'Set-Cookie':cookie}:{})}});
  try {
   const origin=request.headers.get('Origin');if(origin&&origin!==new URL(request.url).origin)throw new ApiError(403,'このアプリから操作してください');
